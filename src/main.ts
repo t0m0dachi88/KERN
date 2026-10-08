@@ -16,11 +16,28 @@ async function main(prompt: string): Promise<void> {
         groq,
         messages,
         tools
+        ,(event)=>{
+       if (event.type === "text") {
+        process.stdout.write(event.content);
+    }
+
+    if (event.type === "tool_call") {
+        console.log(`\n[TOOL: ${event.name}]`);
+    }
+
+    if (event.type === "tool_result") {
+        console.log(`[RESULT]\n${event.result}`);
+    }
+    if(event.type=="done")
+    {
+        console.log("end");
+    }
+        }
     );
 }
 
 await main(
-    "List the files in src and also in its sub folders"
+    "List the files inside src/tools."
 );
 
 

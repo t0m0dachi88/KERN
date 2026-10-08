@@ -10,3 +10,25 @@ export interface ToolSpec {
 export interface Tool extends ToolSpec {
     execute: (args: Record<string, unknown>) => Promise<string>
 }
+
+
+export type AgentEvent =
+    | {
+        type: "text";
+        content: string;
+    }
+    | {
+        type: "tool_call";
+        name: string;
+        arguments: string;
+    }
+    | {
+        type: "tool_result";
+        name: string;
+        result: string;
+    }
+    | {
+        type: "done";
+    };
+
+    export type EventHandler =(event:AgentEvent)=>void

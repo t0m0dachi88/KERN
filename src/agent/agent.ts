@@ -1,12 +1,13 @@
 import Groq from "groq-sdk";
-import { Message, Tool } from "../types.js";
+import { Message, Tool,AgentEvent,EventHandler } from "../types.js";
 
 const MAX_TURNS = 10;
 
 export async function runAgent(
     groq: Groq,
     messages: Message[],
-    tools: Tool[]
+    tools: Tool[],
+    onEvent:EventHandler
 ): Promise<void> {
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {
@@ -27,18 +28,21 @@ export async function runAgent(
             stream: true,
         });
 
-        let toolCallName = "";
-        let toolCallArgs = "";
-        let toolCallId = "";
+        let toolCallName :string = "";
+        let toolCallArgs:string = "";
+        let toolCallId :string = "";
 
         for await (const chunk of stream) {
 
             const delta = chunk.choices[0]?.delta;
+        if (delta?.content) {
+           fullResponse += delta.content;
 
-            if (delta?.content) {
-                process.stdout.write(delta.content);
-                fullResponse += delta.content;
-            }
+        onEvent({
+        type: "text",
+        content: delta.content
+    });
+}
 
             if (delta?.tool_calls) {
 
@@ -100,14 +104,23 @@ export async function runAgent(
 
             continue;
         }
+        onEvent({
+       type: "tool_call",
+       name: toolCallName,
+        arguments: toolCallArgs,
+       });
 
-        console.log(`\n\n[EXECUTING TOOL: ${toolCallName}]`);
+        //console.log(`\n\n[EXECUTING TOOL: ${toolCallName}]`);
 
         const parsedArgs = JSON.parse(toolCallArgs);
 
         const toolResult = await tool.execute(parsedArgs);
-
-        console.log(`[TOOL RESULT]:\n${toolResult}`);
+       onEvent({
+       type: "tool_result",
+       name: toolCallName,
+       result: toolResult,
+      });
+        // console.log(`[TOOL RESULT]:\n${toolResult}`);
 
         // Give result back to model
         messages.push({
@@ -116,14 +129,12 @@ export async function runAgent(
             content: toolResult,
         } as any);
 
-        console.log(
-            "\n\n[ASKING LLM TO CONTINUE...]\n"
-        );
+        // console.log(
+        //     "\n\n[ASKING LLM TO CONTINUE...]\n"
+        // );
 
         // Loop automatically goes back to the model.
     }
 
-    console.log(
-        "\n[AGENT STOPPED: maximum number of turns reached]"
-    );
+    
 }
