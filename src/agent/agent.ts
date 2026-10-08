@@ -11,10 +11,10 @@ export async function runAgent(
 ): Promise<void> {
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {
-
+          let stream;
         let fullResponse = "";
-
-        const stream = await groq.chat.completions.create({
+        try{
+         stream = await groq.chat.completions.create({
             messages: messages as any,
             tools: tools.map((tool) => ({
                 type: "function",
@@ -27,7 +27,14 @@ export async function runAgent(
             model: "openai/gpt-oss-20b",
             stream: true,
         });
-
+    } catch(err){ 
+        onEvent({
+            type:"error",
+            message:`llem error : ${err}`
+        })
+ 
+    };
+    
         let toolCallName :string = "";
         let toolCallArgs:string = "";
         let toolCallId :string = "";
@@ -61,7 +68,9 @@ export async function runAgent(
                 }
             }
         }
-
+    
+    
+         let errorMessage:string="";
         // No tool requested → final response
         if (!toolCallName) {
 
@@ -93,9 +102,9 @@ export async function runAgent(
         const tool = tools.find(
             (tool) => tool.name === toolCallName
         );
-
+       
         if (!tool) {
-
+       errorMessage = `Unknown tool: ${toolCallName}`;
             messages.push({
                 role: "tool",
                 tool_call_id: toolCallId,
@@ -105,16 +114,27 @@ export async function runAgent(
             continue;
         }
         onEvent({
-       type: "tool_call",
-       name: toolCallName,
-        arguments: toolCallArgs,
-       });
+        type: "tool_result",
+        name: toolCallName,
+        result: errorMessage,
+    });
 
         //console.log(`\n\n[EXECUTING TOOL: ${toolCallName}]`);
+     let toolResult: string;
 
-        const parsedArgs = JSON.parse(toolCallArgs);
+      try {
+         const parsedArgs = JSON.parse(toolCallArgs);
 
-        const toolResult = await tool.execute(parsedArgs);
+      try {
+        toolResult = await tool.execute(parsedArgs);
+    } catch (error) {
+        toolResult = `Tool execution error: ${error}`;
+    }
+
+} catch (error) {
+    toolResult = `Invalid tool arguments: ${error}`;
+}
+        
        onEvent({
        type: "tool_result",
        name: toolCallName,

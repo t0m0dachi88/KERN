@@ -28,6 +28,10 @@ async function main(prompt: string): Promise<void> {
     if (event.type === "tool_result") {
         console.log(`[RESULT]\n${event.result}`);
     }
+    if (event.type === "error") {
+       console.error(`\n[ERROR] ${event.message}`);
+        return 0
+    }
     if(event.type=="done")
     {
         console.log("end");
@@ -37,7 +41,7 @@ async function main(prompt: string): Promise<void> {
 }
 
 await main(
-    "List the files inside src/tools."
+    "List the files inside src/irfan ."
 );
 
 
