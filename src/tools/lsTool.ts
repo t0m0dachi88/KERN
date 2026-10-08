@@ -1,10 +1,12 @@
-import { readFile,readdir } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Tool } from "../types.js";
 
-export const readTool: Tool = {
-    name: "read",
-    description: "Read a text file and returns its contents",
+
+
+export const lsTool: Tool = {
+    name: "ls",
+    description: "Read a folder and returns its contents",
 
     // This is JSON Schema. It tells the LLM exactly what arguments to provide.
     parameters: {
@@ -12,7 +14,7 @@ export const readTool: Tool = {
         properties: {
             path: {
                 type: "string",
-                description: "Path to the file, relative to the current folder",
+                description: "Path to the folder, relative to the current folder",
             },
         },
         required: ["path"],
@@ -23,9 +25,8 @@ export const readTool: Tool = {
         // Resolve the path relative to where you ran the `npx tsx` command
         const targetPath = resolve(process.cwd(), String(args.path));
 
-        // Read the file and return its content as a string
-        return readFile(targetPath, "utf8");
+        // Read the folder and return its content as a string
+        const entries=await  readdir(targetPath, "utf8");
+        return entries.join("\n")
     },
 };
-
-

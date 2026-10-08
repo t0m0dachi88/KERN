@@ -1,5 +1,5 @@
 import { Message } from "./types.js";
-import { readTool } from "./tools/readTool.js";
+import { tools } from "./tools/index.js";
 import { groq } from "./provider/groq.js";
 import { runAgent } from "./agent/agent.js";
 
@@ -15,14 +15,13 @@ async function main(prompt: string): Promise<void> {
     await runAgent(
         groq,
         messages,
-        [readTool]
+        tools
     );
 }
 
 await main(
-    "What are the contents of the src/types.ts file?"
+    "List the files in src and also in its sub folders"
 );
-
 
 
 console.log("\n---");
