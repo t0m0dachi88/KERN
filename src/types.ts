@@ -1,5 +1,5 @@
 export type Message = {
-    role: "user" | "assistant", content: string
+    role: "user" | "assistant" |"tool", content: string
 }
 
 export interface ToolSpec {
