@@ -1,4 +1,8 @@
 /node_modules
 .env
+<<<<<<< HEAD
 
 Rebuilding MyPi Coding Agent.md
+=======
+Rebuilding MyPi Coding Agent.md
+>>>>>>> 632f9ebdb51c3ebef4ab7905d0485f9d6e501a4d
