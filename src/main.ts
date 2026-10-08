@@ -149,6 +149,6 @@ async function main(prompt: string): Promise<void> {
     }
 }
 
-await main("What are the contents of the package.json file?");
+await main("What are the contents of the src/types.ts file?");
 
 console.log("\n---");
