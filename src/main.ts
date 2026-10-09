@@ -1,7 +1,8 @@
 import { Message } from "./types.js";
 import { tools } from "./tools/index.js";
-import { groq } from "./provider/groq.js";
+import { groqProvider,groq } from "./provider/groq.js";
 import { runAgent } from "./agent/agent.js";
+
 
 const messages: Message[] = [];
 
@@ -13,6 +14,7 @@ async function main(prompt: string): Promise<void> {
     });
 
     await runAgent(
+        groqProvider,
         messages,
         tools
         ,(event)=>{

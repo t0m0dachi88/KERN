@@ -1,48 +1,37 @@
-import type { Message, Tool, EventHandler } from "../types.js";
-import { groqResponse } from "../provider/groq.js";
+import type {  LLMProvider,
+    LLMToolCall,
+    Message,
+    Tool,
+    EventHandler,} from "../types.js";
+import { groqProvider } from "../provider/groq.js";
 
 const MAX_TURNS = 10;
 
+
 export async function runAgent(
+    provider: LLMProvider,
     messages: Message[],
     tools: Tool[],
     onEvent: EventHandler
 ): Promise<void> {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
         let fullResponse = "";
-        let toolCallName = "";
-        let toolCallArgs = "";
-        let toolCallId = "";
+        const toolCalls: LLMToolCall[] = [];
 
         try {
-            const stream = await groqResponse(messages, tools);
+            const stream =await  provider.generateResponse(messages, tools);
 
             for await (const chunk of stream) {
-                const delta = chunk.choices[0]?.delta;
-
-                if (delta?.content) {
-                    fullResponse += delta.content;
-
+                if (chunk.content) {
+                    fullResponse += chunk.content;
                     onEvent({
                         type: "text",
-                        content: delta.content,
+                        content: chunk.content,
                     });
                 }
 
-                if (delta?.tool_calls) {
-                    for (const tc of delta.tool_calls) {
-                        if (tc.id) {
-                            toolCallId = tc.id;
-                        }
-
-                        if (tc.function?.name) {
-                            toolCallName = tc.function.name;
-                        }
-
-                        if (tc.function?.arguments) {
-                            toolCallArgs += tc.function.arguments;
-                        }
-                    }
+                if (chunk.toolCalls) {
+                    toolCalls.push(...chunk.toolCalls);
                 }
             }
         } catch (error) {
@@ -50,11 +39,12 @@ export async function runAgent(
                 type: "error",
                 message: `LLM error: ${error}`,
             });
+            onEvent({ type: "done" });
             return;
         }
 
-        // No tool requested: return the final response.
-        if (!toolCallName) {
+        // No tool calls means the model has finished its response.
+        if (toolCalls.length === 0) {
             messages.push({
                 role: "assistant",
                 content: fullResponse,
@@ -64,74 +54,75 @@ export async function runAgent(
             return;
         }
 
-        // Record the assistant's tool request.
+        // Record the assistant's tool-call request in conversation history.
         messages.push({
             role: "assistant",
-            content: null,
-            tool_calls: [
-                {
-                    id: toolCallId,
-                    type: "function",
-                    function: {
-                        name: toolCallName,
-                        arguments: toolCallArgs,
-                    },
+            content: fullResponse || null,
+            tool_calls: toolCalls.map((call) => ({
+                id: call.id,
+                type: "function",
+                function: {
+                    name: call.name ?? "",
+                    arguments: call.arguments ?? "",
                 },
-            ],
+            })),
         } as any);
 
-        onEvent({
-            type: "tool_call",
-            name: toolCallName,
-            arguments: toolCallArgs,
-        });
+        // Execute each requested tool and return its result.
+        for (const call of toolCalls) {
+            const name = call.name ?? "";
+            const args = call.arguments ?? "{}";
 
-        const tool = tools.find(
-            (item) => item.name === toolCallName
-        );
+            onEvent({
+                type: "tool_call",
+                name,
+                arguments: args,
+            });
 
-        let toolResult: string;
+            const tool = tools.find((item) => item.name === name);
+            let result: string;
 
-        if (!tool) {
-            toolResult = `Unknown tool: ${toolCallName}`;
-        } else {
-            try {
-                const parsedArgs: unknown = JSON.parse(toolCallArgs);
+            if (!tool) {
+                result = `Unknown tool: ${name}`;
+            } else {
+                try {
+                    const parsed: unknown = JSON.parse(args);
 
-                if (
-                    parsedArgs === null ||
-                    typeof parsedArgs !== "object" ||
-                    Array.isArray(parsedArgs)
-                ) {
-                    throw new Error("Tool arguments must be a JSON object.");
+                    if (
+                        parsed === null ||
+                        typeof parsed !== "object" ||
+                        Array.isArray(parsed)
+                    ) {
+                        throw new Error(
+                            "Tool arguments must be a JSON object."
+                        );
+                    }
+
+                    result = await tool.execute(
+                        parsed as Record<string, unknown>
+                    );
+                } catch (error) {
+                    result = `Tool error: ${error}`;
                 }
-
-                toolResult = await tool.execute(
-                    parsedArgs as Record<string, unknown>
-                );
-            } catch (error) {
-                toolResult = `Tool error: ${error}`;
             }
+
+            onEvent({
+                type: "tool_result",
+                name,
+                result,
+            });
+
+            messages.push({
+                role: "tool",
+                tool_call_id: call.id,
+                content: result,
+            } as any);
         }
-
-        onEvent({
-            type: "tool_result",
-            name: toolCallName,
-            result: toolResult,
-        });
-
-        // Return the tool result to the LLM.
-        messages.push({
-            role: "tool",
-            tool_call_id: toolCallId,
-            content: toolResult,
-        } as any);
     }
 
     onEvent({
         type: "error",
         message: `Agent reached the maximum of ${MAX_TURNS} turns.`,
     });
-
     onEvent({ type: "done" });
 }
