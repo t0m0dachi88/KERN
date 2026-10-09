@@ -1,88 +1,70 @@
-import Groq from "groq-sdk";
-import { Message, Tool,AgentEvent,EventHandler } from "../types.js";
+import type { Message, Tool, EventHandler } from "../types.js";
+import { groqResponse } from "../provider/groq.js";
 
 const MAX_TURNS = 10;
 
 export async function runAgent(
-    groq: Groq,
     messages: Message[],
     tools: Tool[],
-    onEvent:EventHandler
+    onEvent: EventHandler
 ): Promise<void> {
-
     for (let turn = 0; turn < MAX_TURNS; turn++) {
-          let stream;
         let fullResponse = "";
-        try{
-         stream = await groq.chat.completions.create({
-            messages: messages as any,
-            tools: tools.map((tool) => ({
-                type: "function",
-                function: {
-                    name: tool.name,
-                    description: tool.description,
-                    parameters: tool.parameters,
-                },
-            })),
-            model: "openai/gpt-oss-20b",
-            stream: true,
-        });
-    } catch(err){ 
-        onEvent({
-            type:"error",
-            message:`llem error : ${err}`
-        })
- 
-    };
-    
-        let toolCallName :string = "";
-        let toolCallArgs:string = "";
-        let toolCallId :string = "";
+        let toolCallName = "";
+        let toolCallArgs = "";
+        let toolCallId = "";
 
-        for await (const chunk of stream) {
+        try {
+            const stream = await groqResponse(messages, tools);
 
-            const delta = chunk.choices[0]?.delta;
-        if (delta?.content) {
-           fullResponse += delta.content;
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta;
 
-        onEvent({
-        type: "text",
-        content: delta.content
-    });
-}
+                if (delta?.content) {
+                    fullResponse += delta.content;
 
-            if (delta?.tool_calls) {
-
-                const tc = delta.tool_calls[0];
-
-                if (tc?.id) {
-                    toolCallId = tc.id;
+                    onEvent({
+                        type: "text",
+                        content: delta.content,
+                    });
                 }
 
-                if (tc?.function?.name) {
-                    toolCallName = tc.function.name;
-                }
+                if (delta?.tool_calls) {
+                    for (const tc of delta.tool_calls) {
+                        if (tc.id) {
+                            toolCallId = tc.id;
+                        }
 
-                if (tc?.function?.arguments) {
-                    toolCallArgs += tc.function.arguments;
+                        if (tc.function?.name) {
+                            toolCallName = tc.function.name;
+                        }
+
+                        if (tc.function?.arguments) {
+                            toolCallArgs += tc.function.arguments;
+                        }
+                    }
                 }
             }
+        } catch (error) {
+            onEvent({
+                type: "error",
+                message: `LLM error: ${error}`,
+            });
+            return;
         }
-    
-    
-         let errorMessage:string="";
-        // No tool requested → final response
-        if (!toolCallName) {
 
+        // No tool requested: return the final response.
+        if (!toolCallName) {
             messages.push({
                 role: "assistant",
                 content: fullResponse,
             });
 
+            onEvent({ type: "done" });
             return;
         }
 
-        // Model requested a tool
+        // Record the assistant's tool request.
         messages.push({
             role: "assistant",
             content: null,
@@ -98,59 +80,58 @@ export async function runAgent(
             ],
         } as any);
 
-        // Find the requested tool
-        const tool = tools.find(
-            (tool) => tool.name === toolCallName
-        );
-       
-        if (!tool) {
-       errorMessage = `Unknown tool: ${toolCallName}`;
-            messages.push({
-                role: "tool",
-                tool_call_id: toolCallId,
-                content: `Unknown tool: ${toolCallName}`,
-            } as any);
-
-            continue;
-        }
         onEvent({
-        type: "tool_result",
-        name: toolCallName,
-        result: errorMessage,
-    });
+            type: "tool_call",
+            name: toolCallName,
+            arguments: toolCallArgs,
+        });
 
-        
-     let toolResult: string;
+        const tool = tools.find(
+            (item) => item.name === toolCallName
+        );
 
-      try {
-         const parsedArgs = JSON.parse(toolCallArgs);
+        let toolResult: string;
 
-      try {
-        toolResult = await tool.execute(parsedArgs);
-    } catch (error) {
-        toolResult = `Tool execution error: ${error}`;
-    }
+        if (!tool) {
+            toolResult = `Unknown tool: ${toolCallName}`;
+        } else {
+            try {
+                const parsedArgs: unknown = JSON.parse(toolCallArgs);
 
-} catch (error) {
-    toolResult = `Invalid tool arguments: ${error}`;
-}
-        
-       onEvent({
-       type: "tool_result",
-       name: toolCallName,
-       result: toolResult,
-      });
-       
+                if (
+                    parsedArgs === null ||
+                    typeof parsedArgs !== "object" ||
+                    Array.isArray(parsedArgs)
+                ) {
+                    throw new Error("Tool arguments must be a JSON object.");
+                }
 
-        // Give result back to model
+                toolResult = await tool.execute(
+                    parsedArgs as Record<string, unknown>
+                );
+            } catch (error) {
+                toolResult = `Tool error: ${error}`;
+            }
+        }
+
+        onEvent({
+            type: "tool_result",
+            name: toolCallName,
+            result: toolResult,
+        });
+
+        // Return the tool result to the LLM.
         messages.push({
             role: "tool",
             tool_call_id: toolCallId,
             content: toolResult,
         } as any);
-
-        
     }
 
-    
+    onEvent({
+        type: "error",
+        message: `Agent reached the maximum of ${MAX_TURNS} turns.`,
+    });
+
+    onEvent({ type: "done" });
 }

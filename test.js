@@ -1,4 +1,4 @@
-import  { exec }  from "node:child_process" 
+//import  { exec }  from "node:child_process" 
 // exec("node --version", (error, stdout, stderr) => {
 //     if (error) {
 //         console.error(error.message);
@@ -31,10 +31,10 @@ import  { exec }  from "node:child_process"
 // const { execFile } = require("node:child_process");
 // const { promisify } = require("node:util");
 
-import { ShellTool } from "./src/tools/shellTool";
+//import { ShellTool } from "./src/tools/shellTool";
 
-const result = await ShellTool.execute("node", ["--version"]);
+//const result = await ShellTool.execute("node", ["--version"]);
 
-console.log("Result:", result);
+//console.log("Result:", result);
 
 
