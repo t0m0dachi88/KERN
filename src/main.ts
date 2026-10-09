@@ -39,7 +39,7 @@ async function main(prompt: string): Promise<void> {
     );
 }
 await main(
-    "Use the shell tool to run a command that recursively lists all files and directories in the current project, including nested directories. Exclude node_modules and .git to keep the output manageable."
+    "List every file and directory recursively in the current project, excluding .git and node_modules"
 );
 
 
