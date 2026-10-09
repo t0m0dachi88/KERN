@@ -41,7 +41,7 @@ async function main(prompt: string): Promise<void> {
     );
 }
 await main(
-    "List every file and directory recursively in the current project, excluding .git and node_modules"
+    `run node --version"`
 );
 
 

@@ -2,7 +2,7 @@
 import { Tool } from "../types.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-
+import { isCommandAllowed } from "./commandAllowList.js";
 const execFileAsync = promisify(execFile);
 
 export const ShellTool: Tool = {
@@ -26,11 +26,14 @@ export const ShellTool: Tool = {
         },
         required: ["command", "args"],
     },
+  
 
+    
     async execute(args: Record<string, unknown>): Promise<string> {
     const command = args.command;
     const commandArgs = args.args;
-
+      
+       
     if (
         typeof command !== "string" ||
         command.trim() === "" ||
@@ -38,6 +41,9 @@ export const ShellTool: Tool = {
         !commandArgs.every((arg) => typeof arg === "string")
     ) {
         return "Invalid arguments: expected a command string and an array of string arguments.";
+    } 
+    if (!isCommandAllowed(command, commandArgs)) {
+        return "Error: Command or arguments are not allowed.";
     }
 
     try {
