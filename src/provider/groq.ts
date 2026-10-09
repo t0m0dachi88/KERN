@@ -10,14 +10,6 @@ export const groq = new Groq({
 
 
 
-import { GoogleGenAI } from "@google/genai";
 
-const google = new GoogleGenAI({
-    apiKey:"AIzaSyDlJJX0yFn1EN40We8UiUDZQcjlJVbwsxs"
-});
 
-const response = await google.models.generateContent({
-  model: "gemma-4-26b-a4b-it",
-  contents: "Roses are red...",
-});
-console.log(response.text);
+
