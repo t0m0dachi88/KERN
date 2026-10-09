@@ -119,7 +119,7 @@ export async function runAgent(
         result: errorMessage,
     });
 
-        //console.log(`\n\n[EXECUTING TOOL: ${toolCallName}]`);
+        
      let toolResult: string;
 
       try {
@@ -140,7 +140,7 @@ export async function runAgent(
        name: toolCallName,
        result: toolResult,
       });
-        // console.log(`[TOOL RESULT]:\n${toolResult}`);
+       
 
         // Give result back to model
         messages.push({
@@ -149,11 +149,7 @@ export async function runAgent(
             content: toolResult,
         } as any);
 
-        // console.log(
-        //     "\n\n[ASKING LLM TO CONTINUE...]\n"
-        // );
-
-        // Loop automatically goes back to the model.
+        
     }
 
     

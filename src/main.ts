@@ -39,9 +39,8 @@ async function main(prompt: string): Promise<void> {
         }
     );
 }
-
 await main(
-    "List the files inside src/irfan ."
+    ""
 );
 
 
