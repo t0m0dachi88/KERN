@@ -4,7 +4,7 @@ import type {  LLMProvider,
     Tool,
     EventHandler,} from "../types.js";
 import { groqProvider } from "../provider/groq.js";
-
+import { requestApproval } from "../tools/approval.js";
 const MAX_TURNS = 10;
 
 
@@ -97,10 +97,20 @@ export async function runAgent(
                             "Tool arguments must be a JSON object."
                         );
                     }
-
-                    result = await tool.execute(
+                    let isToolApproved=true;
+                     if(tool.requiresApproval){
+                    isToolApproved= await  requestApproval(tool.name,tool.description)
+                     }
+                     if(isToolApproved){
+                        console.log("Command:");
+console.log("PATH:", process.env.PATH);
+                       result = await tool.execute(
                         parsed as Record<string, unknown>
                     );
+                     }else{
+                        result="user rejected tool call "
+                     }
+                    
                 } catch (error) {
                     result = `Tool error: ${error}`;
                 }

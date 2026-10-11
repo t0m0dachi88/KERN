@@ -41,7 +41,7 @@ async function main(prompt: string): Promise<void> {
     );
 }
 await main(
-    `run node --version"`
+    `Use the edit tool to replace the exact text hello with hello edited in test.js. Do not use the shell tool. Do not tell me to edit the file manually."`
 );
 
 

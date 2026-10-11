@@ -8,7 +8,7 @@ const execFileAsync = promisify(execFile);
 export const ShellTool: Tool = {
     name: "shell",
     description: "Executes a program with the specified arguments.",
-
+     requiresApproval:true,
     parameters: {
         type: "object",
         properties: {
@@ -50,6 +50,7 @@ export const ShellTool: Tool = {
         const { stdout, stderr } = await execFileAsync(
             command,
             commandArgs,{
+                cwd: process.cwd(),
     timeout: 10_000,
     maxBuffer: 1024 * 1024,
 }
