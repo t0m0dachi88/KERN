@@ -1,4 +1,3 @@
-
 export interface ToolCall {
     id: string;
     type: "function";
@@ -34,7 +33,6 @@ export interface ToolSpec {
     name: string;
     description: string;
     parameters: Record<string, unknown>
-    requiresApproval?:boolean
 }
 export interface Tool extends ToolSpec {
     execute: (args: Record<string, unknown>) => Promise<string>

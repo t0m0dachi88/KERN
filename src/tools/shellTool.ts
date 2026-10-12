@@ -1,14 +1,13 @@
-
 import { Tool } from "../types.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { isCommandAllowed } from "./commandAllowList.js";
+import { requestApproval } from "./approval.js";
 const execFileAsync = promisify(execFile);
 
 export const ShellTool: Tool = {
     name: "shell",
     description: "Executes a program with the specified arguments.",
-     requiresApproval:true,
     parameters: {
         type: "object",
         properties: {
@@ -44,6 +43,16 @@ export const ShellTool: Tool = {
     } 
     if (!isCommandAllowed(command, commandArgs)) {
         return "Error: Command or arguments are not allowed.";
+    }
+
+    // Only commands that passed the allowlist reach the user for approval.
+    const approved = await requestApproval(
+        ShellTool.name,
+        ShellTool.description,
+        JSON.stringify({ command, args: commandArgs })
+    );
+    if (!approved) {
+        return "user rejected tool call ";
     }
 
     try {

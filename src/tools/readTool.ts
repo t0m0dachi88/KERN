@@ -1,6 +1,8 @@
-import { readFile,readdir } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolveInsideWorkspace, WorkspaceBoundaryError } from "./pathBoundary.js";
 import { Tool } from "../types.js";
+
+const WORKSPACE_ROOT = process.cwd();
 
 export const readTool: Tool = {
     name: "read",
@@ -20,11 +22,27 @@ export const readTool: Tool = {
 
     // This is the function YOUR code runs when the LLM asks to use the tool
     async execute(args) {
-        // Resolve the path relative to where you ran the `npx tsx` command
-        const targetPath = resolve(process.cwd(), String(args.path));
+        if (
+            typeof args.path !== "string" ||
+            args.path.trim() === ""
+        ) {
+            return "Error: Invalid arguments. path must be a non-empty string.";
+        }
 
-        // Read the file and return its content as a string
-        return readFile(targetPath, "utf8");
+        try {
+            const targetPath = await resolveInsideWorkspace(
+                WORKSPACE_ROOT,
+                args.path
+            );
+
+            return await readFile(targetPath, "utf8");
+        } catch (error) {
+            if (error instanceof WorkspaceBoundaryError) {
+                return `Error: ${error.message}`;
+            }
+            const reason = error instanceof Error ? error.message : String(error);
+            return `Error reading ${args.path}: ${reason}`;
+        }
     },
 };
 
