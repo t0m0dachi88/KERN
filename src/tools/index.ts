@@ -5,6 +5,8 @@ import { editTool } from "./editTools.js";
 import { searchTool } from "./searchTool.js";
 import { findTool } from "./findTool.js";
 import { grepTool } from "./grepTool.js";
+import { statTool } from "./statTool.js";
+import { writeTool } from "./writeTool.js";
 export const tools=[
     readTool,
     lsTool,
@@ -12,5 +14,7 @@ export const tools=[
     editTool,
     searchTool,
     findTool,
-    grepTool
+    grepTool,
+    statTool
+    ,writeTool
 ]
