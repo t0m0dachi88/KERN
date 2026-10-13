@@ -3,7 +3,7 @@ import type {  LLMProvider,
     Message,
     Tool,
     EventHandler,} from "../types.js";
-import { groqProvider } from "../provider/groq.js";
+
 const MAX_TURNS = 10;
 
 
@@ -68,43 +68,54 @@ export async function runAgent(
         } as any);
 
         // Execute each requested tool and return its result.
-        for (const call of toolCalls) {
-            const name = call.name ?? "";
-            const args = call.arguments ?? "{}";
+        f
+for (const call of toolCalls) {
+    const name = call.name?.trim() ?? "";
+    const args = call.arguments ?? "";
 
-            onEvent({
-                type: "tool_call",
-                name,
-                arguments: args,
-            });
+    onEvent({
+        type: "tool_call",
+        name: name || "(invalid tool name)",
+        arguments: args,
+    });
 
-            const tool = tools.find((item) => item.name === name);
-            let result: string;
+    let result: string;
 
-            if (!tool) {
-                result = `Unknown tool: ${name}`;
-            } else {
-                try {
-                    const parsed: unknown = JSON.parse(args);
+    if (!call.id?.trim()) {
+        result = "Tool error: Missing tool-call ID.";
+    } else if (!name) {
+        result = "Tool error: Missing tool name.";
+    } else {
+        const tool = tools.find((item) => item.name === name);
 
-                    if (
-                        parsed === null ||
-                        typeof parsed !== "object" ||
-                        Array.isArray(parsed)
-                    ) {
-                        throw new Error(
-                            "Tool arguments must be a JSON object."
-                        );
-                    }
-                    result = await tool.execute(
-                        parsed as Record<string, unknown>
+        if (!tool) {
+            result = `Unknown tool: ${name}`;
+        } else {
+            try {
+                const parsed: unknown = JSON.parse(args);
+
+                if (
+                    parsed === null ||
+                    typeof parsed !== "object" ||
+                    Array.isArray(parsed)
+                ) {
+                    throw new Error(
+                        "Tool arguments must be a JSON object."
                     );
-                    
-                } catch (error) {
-                    result = `Tool error: ${error}`;
                 }
-            }
 
+                result = await tool.execute(
+                    parsed as Record<string, unknown>
+                );
+            } catch (error) {
+                result = `Tool error: ${
+                    error instanceof Error
+                        ? error.message
+                        : String(error)
+                }`;
+            }
+        }
+    }
             onEvent({
                 type: "tool_result",
                 name,
