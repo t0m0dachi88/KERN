@@ -43,8 +43,9 @@ export const groqProvider: LLMProvider = {
 
                 if (call.id) existing.id = call.id;
 
-                existing.name =
-                    (existing.name ?? "") + (call.function?.name ?? "");
+                if (call.function?.name) {
+    existing.name = call.function.name;
+}
 
                 existing.arguments =
                     (existing.arguments ?? "") +
