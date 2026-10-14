@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import type { Message } from "./types.js";
 import { tools } from "./tools/index.js";
 import { groqProvider } from "./provider/groq.js";
+import { gemmaProvider } from "./provider/gemma.js";
 import { runAgent } from "./agent/agent.js";
 
 const messages: Message[] = [];
@@ -79,7 +80,7 @@ async function runPrompt(prompt: string): Promise<void> {
         content: prompt,
     });
 
-    await runAgent(groqProvider, messages, tools, (event) => {
+    await runAgent(gemmaProvider, messages, tools, (event) => {
         switch (event.type) {
             case "text":
                 process.stdout.write(paint(event.content, color.white));
