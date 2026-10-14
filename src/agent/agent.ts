@@ -7,6 +7,50 @@ import type {  LLMProvider,
 const MAX_TURNS = 10;
 
 
+function validateToolCallBatch(
+    toolCalls: LLMToolCall[]
+): string | null {
+    const seenIds = new Set<string>();
+
+    for (const call of toolCalls) {
+        if (!call.id?.trim()) {
+            return "Tool call is missing an ID.";
+        }
+
+        if (!call.name?.trim()) {
+            return `Tool call ${call.id} is missing a function name.`;
+        }
+
+        if (seenIds.has(call.id)) {
+            return `Duplicate tool-call ID: ${call.id}`;
+        }
+
+        seenIds.add(call.id);
+
+        if (typeof call.arguments !== "string") {
+            return `Tool call ${call.id} has invalid arguments.`;
+        }
+
+        try {
+            const parsed: unknown = JSON.parse(call.arguments);
+
+            if (
+                parsed === null ||
+                typeof parsed !== "object" ||
+                Array.isArray(parsed)
+            ) {
+                return `Tool call ${call.id} arguments must be a JSON object.`;
+            }
+        } catch {
+            return `Tool call ${call.id} contains malformed JSON arguments.`;
+        }
+    }
+
+    return null;
+}
+
+
+
 export async function runAgent(
     provider: LLMProvider,
     messages: Message[],
@@ -19,7 +63,12 @@ export async function runAgent(
 
         try {
             const stream =await  provider.generateResponse(messages, tools);
+//const recentMessages = messages.slice(-10);
 
+// const stream = await provider.generateResponse(
+//     messages,
+//     tools
+// );
             for await (const chunk of stream) {
                 if (chunk.content) {
                     fullResponse += chunk.content;
@@ -34,13 +83,17 @@ export async function runAgent(
                 }
             }
         } catch (error) {
-            onEvent({
-                type: "error",
-                message: `LLM error: ${error}`,
-            });
-            onEvent({ type: "done" });
-            return;
-        }
+    console.error("Full LLM error:", error);
+
+    onEvent({
+        type: "error",
+        message: `LLM error: ${
+            error instanceof Error ? error.message : String(error)
+        }`,
+    });
+    onEvent({ type: "done", status: "error" });
+    return;
+}
 
         // No tool calls means the model has finished its response.
         if (toolCalls.length === 0) {
@@ -49,26 +102,39 @@ export async function runAgent(
                 content: fullResponse,
             });
 
-            onEvent({ type: "done" });
-            return;
+           onEvent({ type: "done", status: "success" });
+return;
         }
+        const validationError = validateToolCallBatch(toolCalls);
+
+if (validationError) {
+    onEvent({
+        type: "error",
+        message: validationError,
+    });
+    onEvent({ type: "done", status: "error" });
+    return;
+}
 
         // Record the assistant's tool-call request in conversation history.
-        messages.push({
-            role: "assistant",
-            content: fullResponse || null,
-            tool_calls: toolCalls.map((call) => ({
-                id: call.id,
-                type: "function",
-                function: {
-                    name: call.name ?? "",
-                    arguments: call.arguments ?? "",
-                },
-            })),
-        } as any);
+        
+const assistantToolCallMessage: Message = {
+    role: "assistant",
+    content: fullResponse || null,
+    tool_calls: toolCalls.map((call) => ({
+        id: call.id,
+        type: "function",
+        function: {
+            name: call.name ?? "",
+            arguments: call.arguments ?? "",
+        },
+    })),
+};
+
+messages.push(assistantToolCallMessage);
 
         // Execute each requested tool and return its result.
-        f
+        
 for (const call of toolCalls) {
     const name = call.name?.trim() ?? "";
     const args = call.arguments ?? "";
@@ -122,11 +188,14 @@ for (const call of toolCalls) {
                 result,
             });
 
-            messages.push({
-                role: "tool",
-                tool_call_id: call.id,
-                content: result,
-            } as any);
+           
+const toolResultMessage: Message = {
+    role: "tool",
+    tool_call_id: call.id,
+    content: result,
+};
+
+messages.push(toolResultMessage);
         }
     }
 
@@ -134,5 +203,6 @@ for (const call of toolCalls) {
         type: "error",
         message: `Agent reached the maximum of ${MAX_TURNS} turns.`,
     });
-    onEvent({ type: "done" });
+   onEvent({ type: "done", status: "error" });
+return;;
 }

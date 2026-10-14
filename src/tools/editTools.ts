@@ -45,6 +45,10 @@ export const editTool: Tool = {
         const path = args.path;
         const oldText = args.oldText;
         const newText = args.newText;
+   
+if (oldText === newText) {
+    return `No changes needed: oldText and newText are identical in ${path}.`;
+}
 
         try {
             const targetPath = await resolveInsideWorkspace(WORKSPACE_ROOT, path);

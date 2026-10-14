@@ -103,9 +103,12 @@ async function runPrompt(prompt: string): Promise<void> {
                 break;
 
             case "done":
-                console.log();
-                console.log(paint("✓ Done", color.green));
-                break;
+    if (event.status === "success") {
+        console.log(paint("✓ Done", color.green));
+    } else {
+        console.log(paint("✖ Agent stopped with an error.", color.red));
+    }
+    break;
         }
     });
 }

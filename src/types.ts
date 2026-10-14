@@ -39,27 +39,6 @@ export interface Tool extends ToolSpec {
 }
 
 
-export type AgentEvent =
-    | {
-        type: "text";
-        content: string;
-    }
-    | {
-        type: "tool_call";
-        name: string;
-        arguments: string;
-    }
-    | {
-        type: "tool_result";
-        name: string;
-        result: string;
-    }
-    | {
-        type: "done";
-    }| {
-        type: "error";
-        message: string;
-    };
 
     export type EventHandler =(event:AgentEvent)=>void
 
@@ -81,3 +60,11 @@ export interface LLMChunk {
         tools: Tool[]
     ): AsyncIterable<LLMChunk> | Promise<AsyncIterable<LLMChunk>>;
 }
+
+
+export type AgentEvent =
+    | { type: "text"; content: string }
+    | { type: "tool_call"; name: string; arguments: string }
+    | { type: "tool_result"; name: string; result: string }
+    | { type: "done"; status: "success" | "error" }
+    | { type: "error"; message: string };
