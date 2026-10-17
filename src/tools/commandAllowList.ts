@@ -20,6 +20,7 @@ const exactRules: CommandRule[] = [
     { command: "npm", args: ["run", "lint"] },
     { command: "npm", args: ["run", "typecheck"] },
     { command: "npm", args: ["list", "--depth=0"] },
+    { command: "npm", args: ["run", "start"] },
     { command: "npx", args: ["tsc", "--noEmit"] },
     { command: "npx", args: ["tsx", "--version"] },
     { command: "npx", args: ["vite", "--version"] },

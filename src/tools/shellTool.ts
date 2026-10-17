@@ -1,4 +1,5 @@
-
+import { resolve, relative, isAbsolute, sep } from "node:path";
+import { stat, realpath } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { Tool } from "../types.js";
@@ -26,13 +27,18 @@ export const ShellTool: Tool = {
                 items: { type: "string" },
                 description: "Arguments passed to the executable",
             },
+          path:{
+            type:"string"
+          }
+            
         },
-        required: ["command", "args"],
+        required: ["command", "args","path"],
     },
 
     async execute(args: Record<string, unknown>): Promise<string> {
         const command = args.command;
         const commandArgs = args.args;
+        const commandPath=args.path
 
         if (
             typeof command !== "string" ||
@@ -52,29 +58,103 @@ export const ShellTool: Tool = {
                 `${JSON.stringify({ command, args: commandArgs })}`
             );
         }
+if (
+    commandPath !== undefined &&
+    (typeof commandPath !== "string" || commandPath.trim() === "")
+) {
+    return "Error: path must be a non-empty relative directory path.";
+}
 
+if (commandPath && isAbsolute(commandPath)) {
+    return "Error: Absolute paths are not allowed.";
+}
+
+const workspaceRoot = await realpath(process.cwd());
+
+const requestedPath = resolve(
+    workspaceRoot,
+    commandPath || ".",
+);
+
+const relativePath = relative(workspaceRoot, requestedPath);
+
+if (
+    relativePath === ".." ||
+    relativePath.startsWith(`..${sep}`) ||
+    isAbsolute(relativePath)
+) {
+    return "Error: Working directory must stay inside the workspace.";
+}
+
+try {
+    const actualPath = await realpath(requestedPath);
+    const actualRelativePath = relative(workspaceRoot, actualPath);
+
+    if (
+        actualRelativePath === ".." ||
+        actualRelativePath.startsWith(`..${sep}`) ||
+        isAbsolute(actualRelativePath)
+    ) {
+        return "Error: Working directory must stay inside the workspace.";
+    }
+
+    if (!(await stat(actualPath)).isDirectory()) {
+        return "Error: The specified path is not a directory.";
+    }
+} catch {
+    return "Error: Working directory does not exist or cannot be accessed.";
+}
         const approved = await requestApproval(
-            ShellTool.name,
-            ShellTool.description,
-            JSON.stringify({ command, args: commandArgs }),
-        );
+    ShellTool.name,
+    ShellTool.description,
+    JSON.stringify({
+        command,
+        args: commandArgs,
+        path: relativePath || ".",
+    }),
+);
 
         if (!approved) {
             return "Execution cancelled: approval was denied.";
         }
 
         try {
-            const { stdout, stderr } = await execFileAsync(
-                command,
-                commandArgs,
-                {
-                    cwd: process.cwd(),
-                    timeout: 30_000,
-                    maxBuffer: 1024 * 1024,
-                    windowsHide: true,
-                    shell: false,
-                },
-            );
+           
+
+const isWindows = process.platform === "win32";
+
+let executable = command;
+let executableArgs = commandArgs;
+
+if (isWindows && command === "npm") {
+    executable = process.execPath;
+    executableArgs = [
+        "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js",
+        ...commandArgs,
+    ];
+} else if (isWindows && command === "npx") {
+    executable = process.execPath;
+    executableArgs = [
+        "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npx-cli.js",
+        ...commandArgs,
+    ];
+}
+
+
+
+const { stdout, stderr } = await execFileAsync(
+    executable,
+    executableArgs,
+    {
+        cwd: requestedPath,
+        timeout: 120_000,
+        maxBuffer: 5 * 1024 * 1024,
+        windowsHide: true,
+        shell: false,
+    },
+);
+
+
 
             return [
                 "Exit code: 0",
