@@ -1,8 +1,11 @@
 
 
 Readme · MD
+
+
+
 # Kern
- 
+![Image description](./projectStructure.png) 
 A light weight coding agent and AI harness built from scratch to understand how modern AI coding agents work internally.
  
 Kern is an educational AI coding-agent project built with TypeScript and Node.js. Instead of treating an AI coding agent as a black box, Kern rebuilds its fundamental components step by step.
