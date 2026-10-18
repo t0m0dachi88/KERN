@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-const apiKey = "AIzaSyCRQrUy7aMJ05QPcI1dJ835vC2P5p1FkGU"
+const apiKey;
 
 const ai = new GoogleGenAI({ apiKey });
 
