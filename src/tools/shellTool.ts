@@ -28,7 +28,8 @@ export const ShellTool: Tool = {
                 description: "Arguments passed to the executable",
             },
           path:{
-            type:"string"
+            type:"string",
+            description:"The relative directory path to execute the command in, resolved from the Kern workspace root. Must be a non-empty relative path. Use '.' for the workspace root. Do not use absolute paths or paths that escape the workspace."
           }
             
         },

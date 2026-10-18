@@ -20,7 +20,7 @@ if (!apiKey) {
 
 const ai = new GoogleGenAI({ apiKey });
 
-const MODEL = "gemma-4-26b-a4b-it";
+const MODEL = "gemma-4-31b-it";
 
 // Translate Kern's OpenAI-compatible message history
 // into Google's Content format.

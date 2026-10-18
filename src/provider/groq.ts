@@ -9,6 +9,13 @@ dotenv.config();
 });
 export const groqProvider: LLMProvider = {
     async *generateResponse(messages: Message[], tools: Tool[]) {
+        console.dir(
+  tools.map((tool) => ({
+    name: tool.name,
+    parameters: tool.parameters,
+  })),
+  { depth: null },
+);
         const stream = await groq.chat.completions.create({
             messages: messages as any,
             tools: tools.map((tool) => ({
